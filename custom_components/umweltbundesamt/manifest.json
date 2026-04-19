@@ -1,0 +1,12 @@
+{
+  "domain": "umweltbundesamt",
+  "name": "Umweltbundesamt",
+  "codeowners": [],
+  "config_flow": true,
+  "documentation": "https://github.com/borisgrushenko/ha-Umweltbundesamt",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/borisgrushenko/ha-Umweltbundesamt/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

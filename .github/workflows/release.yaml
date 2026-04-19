@@ -1,0 +1,35 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set version in manifest.json
+        run: |
+          python - <<'PY'
+          import json, os, pathlib
+          tag = os.environ["GITHUB_REF_NAME"].lstrip("v")
+          path = pathlib.Path("custom_components/umweltbundesamt/manifest.json")
+          data = json.loads(path.read_text())
+          data["version"] = tag
+          path.write_text(json.dumps(data, indent=2) + "\n")
+          PY
+
+      - name: Create release zip
+        run: |
+          cd custom_components/umweltbundesamt
+          zip -r "$GITHUB_WORKSPACE/umweltbundesamt.zip" .
+
+      - name: Attach zip to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: umweltbundesamt.zip
