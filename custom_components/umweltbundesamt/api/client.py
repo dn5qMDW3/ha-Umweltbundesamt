@@ -44,17 +44,26 @@ class UBAClient:
             raise UBAApiError(f"{url} request failed: {err}") from err
 
     async def fetch_components(self) -> dict[int, Component]:
-        """Fetch the component (pollutant) metadata."""
+        """Fetch the component (pollutant) metadata.
+
+        The real /components/json payload contains ``count`` (int) and
+        ``indices`` (list) alongside integer-id keys mapping to rows of
+        ``[id, code, symbol, unit, name]``. We treat the presence of
+        ``indices`` as the marker of a well-formed payload and iterate
+        only the digit-string keys.
+        """
         if self._components is not None:
             return self._components
         payload = await self._get_json(
             "/components/json", {"lang": "de", "index": "id"}
         )
-        if not isinstance(payload, dict):
+        if not isinstance(payload, dict) or "indices" not in payload:
             raise UBAApiError("components: unexpected payload shape")
         try:
             parsed: dict[int, Component] = {}
-            for raw in payload.values():
+            for key, raw in payload.items():
+                if not isinstance(key, str) or not key.isdigit():
+                    continue
                 if not isinstance(raw, list) or len(raw) < 5:
                     raise UBAApiError("components: unexpected row shape")
                 comp_id, code, symbol, unit, name = raw[:5]
@@ -71,7 +80,12 @@ class UBAClient:
         return parsed
 
     async def fetch_stations(self) -> list[Station]:
-        """Fetch the full station list."""
+        """Fetch the full station list.
+
+        The real /stations/json payload wraps the station rows in a
+        ``data`` dict keyed by station id. Rows are 20-element positional
+        arrays; see the UBA v2 ``indices`` header for the full layout.
+        """
         if self._stations is not None:
             return self._stations
         payload = await self._get_json(
@@ -79,9 +93,12 @@ class UBAClient:
         )
         if not isinstance(payload, dict):
             raise UBAApiError("stations: unexpected payload shape")
+        data = payload.get("data")
+        if not isinstance(data, dict):
+            raise UBAApiError("stations: 'data' key missing or wrong type")
         parsed: list[Station] = []
-        for raw in payload.values():
-            if not isinstance(raw, list) or len(raw) < 12:
+        for raw in data.values():
+            if not isinstance(raw, list) or len(raw) < 17:
                 raise UBAApiError("stations: unexpected row shape")
             try:
                 station = Station(
@@ -89,14 +106,14 @@ class UBAClient:
                     code=str(raw[1]),
                     name=str(raw[2]),
                     city=str(raw[3]),
-                    active_from=_parse_uba_datetime(raw[4]),
+                    active_from=_parse_uba_datetime(raw[5]),
                     active_to=(
-                        _parse_uba_datetime(raw[5]) if raw[5] else None
+                        _parse_uba_datetime(raw[6]) if raw[6] else None
                     ),
-                    latitude=float(raw[6]),
                     longitude=float(raw[7]),
-                    network_code=str(raw[8]),
-                    station_type=f"{raw[10]} {raw[11]}".strip(),
+                    latitude=float(raw[8]),
+                    network_code=str(raw[12]),
+                    station_type=f"{raw[16]} {raw[15]}".strip(),
                 )
             except (TypeError, ValueError) as err:
                 raise UBAApiError(f"stations: parse error: {err}") from err
@@ -112,9 +129,19 @@ class UBAClient:
 
 
 def _parse_uba_datetime(raw: Any) -> datetime:
-    """Parse the UBA 'YYYY-MM-DD HH:MM:SS' format in Europe/Berlin tz."""
+    """Parse a UBA timestamp in Europe/Berlin tz.
+
+    Accepts both ``"YYYY-MM-DD HH:MM:SS"`` (used by measurement rows) and
+    ``"YYYY-MM-DD"`` (used by station active_from/active_to). Date-only
+    values are interpreted as midnight local time.
+    """
     if isinstance(raw, datetime):
         return raw if raw.tzinfo else raw.replace(tzinfo=BERLIN_TZ)
     if not isinstance(raw, str):
         raise UBAApiError(f"expected datetime string, got {type(raw).__name__}")
-    return datetime.strptime(raw, "%Y-%m-%d %H:%M:%S").replace(tzinfo=BERLIN_TZ)
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d"):
+        try:
+            return datetime.strptime(raw, fmt).replace(tzinfo=BERLIN_TZ)
+        except ValueError:
+            continue
+    raise UBAApiError(f"unrecognised UBA datetime: {raw!r}")

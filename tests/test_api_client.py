@@ -46,7 +46,7 @@ async def test_fetch_stations_parses_active_and_inactive():
     assert by_id[282].city == "Berlin"
     assert by_id[282].active_to is None
     assert by_id[999].active_to == datetime(
-        2015, 12, 31, 23, 0, tzinfo=ZoneInfo("Europe/Berlin")
+        2015, 12, 31, tzinfo=ZoneInfo("Europe/Berlin")
     )
     assert by_id[1083].latitude == pytest.approx(48.137)
 
