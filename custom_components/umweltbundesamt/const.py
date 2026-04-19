@@ -11,12 +11,3 @@ CONF_STATION_ID = "station_id"
 CONF_INCLUDE_AQI = "include_aqi"
 
 DEFAULT_INCLUDE_AQI = True
-
-# Air-quality index level (1..5) -> localized label keys. Resolved at sensor runtime.
-AQI_LEVEL_KEYS = {
-    1: "very_good",
-    2: "good",
-    3: "moderate",
-    4: "poor",
-    5: "very_poor",
-}

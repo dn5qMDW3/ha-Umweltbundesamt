@@ -9,7 +9,6 @@ from zoneinfo import ZoneInfo
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
-from homeassistant.data_entry_flow import AbortFlow
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
     SelectOptionDict,
@@ -36,83 +35,64 @@ class UBAConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle the user-initiated config flow."""
 
     VERSION = 1
+    MINOR_VERSION = 1
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
+        session = async_get_clientsession(self.hass)
+        client = UBAClient(session)
         try:
-            session = async_get_clientsession(self.hass)
-            client = UBAClient(session)
-            try:
-                stations = await client.fetch_stations()
-            except UBAError as err:
-                _LOGGER.warning("UBA station fetch failed: %s", err)
-                return self.async_abort(reason="cannot_connect")
+            stations = await client.fetch_stations()
+        except UBAError as err:
+            _LOGGER.warning("UBA station fetch failed: %s", err)
+            return self.async_abort(reason="cannot_connect")
 
-            now = datetime.now(BERLIN_TZ)
-            active = [s for s in stations if s.is_active(now)]
-            if not active:
-                return self.async_abort(reason="no_active_stations")
+        now = datetime.now(BERLIN_TZ)
+        active = [s for s in stations if s.is_active(now)]
+        if not active:
+            return self.async_abort(reason="no_active_stations")
 
-            home_lat = self.hass.config.latitude
-            home_lon = self.hass.config.longitude
-            active.sort(key=lambda s: s.distance_km(home_lat, home_lon))
-            nearest = active[0]
+        home_lat = self.hass.config.latitude
+        home_lon = self.hass.config.longitude
+        active.sort(key=lambda s: s.distance_km(home_lat, home_lon))
+        nearest = active[0]
 
-            if user_input is not None:
-                picked_id = int(user_input[CONF_STATION_ID])
-                await self.async_set_unique_id(str(picked_id))
-                self._abort_if_unique_id_configured()
-                picked = next(
-                    (s for s in active if s.id == picked_id), nearest,
-                )
-                return self.async_create_entry(
-                    title=f"{picked.name} ({picked.city})",
-                    data={CONF_STATION_ID: picked.id},
-                    options={CONF_INCLUDE_AQI: bool(user_input.get(
-                        CONF_INCLUDE_AQI, DEFAULT_INCLUDE_AQI
-                    ))},
-                )
-
-            return self.async_show_form(
-                step_id="user",
-                data_schema=_build_station_schema(
-                    active, home_lat, home_lon, default_id=nearest.id
-                ),
+        if user_input is not None:
+            picked_id = int(user_input[CONF_STATION_ID])
+            await self.async_set_unique_id(str(picked_id))
+            self._abort_if_unique_id_configured()
+            picked = next(
+                (s for s in active if s.id == picked_id), nearest,
             )
-        except AbortFlow:
-            raise
-        except Exception:  # noqa: BLE001
-            _LOGGER.exception("Unexpected error in Umweltbundesamt config flow")
-            return self.async_abort(reason="unknown")
+            return self.async_create_entry(
+                title=f"{picked.name} ({picked.city})",
+                data={CONF_STATION_ID: picked.id},
+                options={CONF_INCLUDE_AQI: bool(user_input.get(
+                    CONF_INCLUDE_AQI, DEFAULT_INCLUDE_AQI
+                ))},
+            )
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=_build_station_schema(
+                active, home_lat, home_lon, default_id=nearest.id
+            ),
+        )
 
     @staticmethod
     @callback
     def async_get_options_flow(
         entry: config_entries.ConfigEntry,
     ) -> config_entries.OptionsFlow:
-        return UBAOptionsFlow(entry)
+        return UBAOptionsFlow()
 
 
 class UBAOptionsFlow(config_entries.OptionsFlow):
     """Options flow — change station, toggle AQI sensor."""
 
-    def __init__(self, entry: config_entries.ConfigEntry) -> None:
-        self._entry = entry
-
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
-    ) -> config_entries.ConfigFlowResult:
-        try:
-            return await self._async_step_init_inner(user_input)
-        except AbortFlow:
-            raise
-        except Exception:  # noqa: BLE001
-            _LOGGER.exception("Unexpected error in Umweltbundesamt options flow")
-            return self.async_abort(reason="unknown")
-
-    async def _async_step_init_inner(
-        self, user_input: dict[str, Any] | None,
     ) -> config_entries.ConfigFlowResult:
         session = async_get_clientsession(self.hass)
         client = UBAClient(session)
@@ -125,15 +105,17 @@ class UBAOptionsFlow(config_entries.OptionsFlow):
         if not active:
             return self.async_abort(reason="no_active_stations")
 
+        entry = self.config_entry
+
         if user_input is not None:
             new_station_id = int(user_input[CONF_STATION_ID])
             include_aqi = bool(
                 user_input.get(CONF_INCLUDE_AQI, DEFAULT_INCLUDE_AQI)
             )
-            if new_station_id != self._entry.data[CONF_STATION_ID]:
+            if new_station_id != entry.data[CONF_STATION_ID]:
                 self.hass.config_entries.async_update_entry(
-                    self._entry,
-                    data={**self._entry.data, CONF_STATION_ID: new_station_id},
+                    entry,
+                    data={**entry.data, CONF_STATION_ID: new_station_id},
                     unique_id=str(new_station_id),
                 )
             return self.async_create_entry(
@@ -141,9 +123,9 @@ class UBAOptionsFlow(config_entries.OptionsFlow):
                 data={CONF_INCLUDE_AQI: include_aqi},
             )
 
-        current_id = int(self._entry.data[CONF_STATION_ID])
+        current_id = int(entry.data[CONF_STATION_ID])
         include_aqi = bool(
-            self._entry.options.get(CONF_INCLUDE_AQI, DEFAULT_INCLUDE_AQI)
+            entry.options.get(CONF_INCLUDE_AQI, DEFAULT_INCLUDE_AQI)
         )
         schema = _build_station_schema(
             active,

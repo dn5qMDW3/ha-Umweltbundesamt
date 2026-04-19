@@ -39,14 +39,8 @@
       "air_quality_index": {
         "name": "Air quality index",
         "state_attributes": {
-          "level_text": {
-            "state": {
-              "very_good": "Very good",
-              "good": "Good",
-              "moderate": "Moderate",
-              "poor": "Poor",
-              "very_poor": "Very poor"
-            }
+          "measurement_time": {
+            "name": "Measurement time"
           }
         }
       }

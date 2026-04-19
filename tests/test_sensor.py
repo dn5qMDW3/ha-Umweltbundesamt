@@ -106,25 +106,14 @@ async def test_sensors_created_for_each_component(hass: HomeAssistant):
 
 
 @pytest.mark.asyncio
-async def test_aqi_sensor_has_level_text_attribute(hass: HomeAssistant):
+async def test_aqi_sensor_exposes_index_and_timestamp(hass: HomeAssistant):
     await _install_entry(hass)
-    # The AQI entity is identified by its unique_id suffix; HA constructs the
-    # entity_id from the device name alone (translation-key name only
-    # resolves once the integration's translations are loaded by HA core).
-    aqi = None
-    for state in hass.states.async_all("sensor"):
-        if state.entity_id.startswith("sensor.wedding_berlin") and (
-            "pm10" not in state.entity_id
-            and "nitrogen_dioxide" not in state.entity_id
-        ):
-            aqi = state
-            break
-    assert aqi is not None, "AQI sensor not found"
+    aqi = hass.states.get("sensor.wedding_berlin_air_quality_index")
+    assert aqi is not None
     assert int(aqi.state) == 2
-    assert aqi.attributes["level_text"] == "good"
-    assert "measurement_time" in aqi.attributes
-    assert aqi.attributes["station_code"] == "DEBE010"
-    assert aqi.attributes["station_city"] == "Berlin"
+    assert aqi.attributes["device_class"] == SensorDeviceClass.AQI
+    assert aqi.attributes["state_class"] == SensorStateClass.MEASUREMENT
+    assert aqi.attributes["measurement_time"] == "2026-04-19T12:00:00+02:00"
 
 
 @pytest.mark.asyncio

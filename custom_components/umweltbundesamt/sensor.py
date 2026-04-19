@@ -9,20 +9,14 @@ from homeassistant.components.sensor import (
     SensorEntity,
     SensorStateClass,
 )
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
+from . import UBAConfigEntry
 from .api.models import Measurement, Station
-from .const import (
-    AQI_LEVEL_KEYS,
-    CONF_INCLUDE_AQI,
-    CONF_STATION_ID,
-    DEFAULT_INCLUDE_AQI,
-    DOMAIN,
-)
+from .const import CONF_INCLUDE_AQI, DEFAULT_INCLUDE_AQI, DOMAIN
 from .coordinator import UBADataUpdateCoordinator
 
 _LOGGER = logging.getLogger(__name__)
@@ -40,14 +34,14 @@ _COMPONENT_DEVICE_CLASSES: dict[str, SensorDeviceClass] = {
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
+    entry: UBAConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up sensors from a config entry."""
-    bucket = hass.data[DOMAIN][entry.entry_id]
-    coordinator: UBADataUpdateCoordinator = bucket["coordinator"]
-    client = bucket["client"]
-    station = await _find_station(client, entry.data[CONF_STATION_ID])
+    runtime = entry.runtime_data
+    coordinator = runtime.coordinator
+    client = runtime.client
+    station = await _find_station(client, coordinator.station_id)
     components_by_id = await client.fetch_components()
     code_to_component = {c.code: c for c in components_by_id.values()}
 
@@ -131,10 +125,6 @@ class UBAComponentSensor(
         reading = data.components.get(self._code)
         return reading.value if reading is not None else None
 
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        self.async_write_ha_state()
-
 
 class UBAAirQualityIndexSensor(
     CoordinatorEntity[UBADataUpdateCoordinator], SensorEntity
@@ -143,6 +133,8 @@ class UBAAirQualityIndexSensor(
 
     _attr_has_entity_name = True
     _attr_translation_key = "air_quality_index"
+    _attr_device_class = SensorDeviceClass.AQI
+    _attr_state_class = SensorStateClass.MEASUREMENT
 
     def __init__(
         self,
@@ -150,7 +142,6 @@ class UBAAirQualityIndexSensor(
         station: Station,
     ) -> None:
         super().__init__(coordinator)
-        self._station = station
         self._attr_unique_id = f"uba_{station.id}_aqi"
         self._attr_device_info = _device_info(station)
 
@@ -162,10 +153,4 @@ class UBAAirQualityIndexSensor(
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         data: Measurement = self.coordinator.data
-        level_key = AQI_LEVEL_KEYS.get(data.index) if data.index else None
-        return {
-            "level_text": level_key,
-            "measurement_time": data.timestamp.isoformat(),
-            "station_code": self._station.code,
-            "station_city": self._station.city,
-        }
+        return {"measurement_time": data.timestamp.isoformat()}

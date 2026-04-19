@@ -7,6 +7,7 @@
   "integration_type": "hub",
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/borisgrushenko/ha-Umweltbundesamt/issues",
+  "quality_scale": "bronze",
   "requirements": [],
-  "version": "0.1.2"
+  "version": "0.1.3"
 }
