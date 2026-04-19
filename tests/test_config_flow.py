@@ -74,7 +74,8 @@ async def test_user_flow_preselects_nearest_and_creates_entry(
         station_key = next(
             k for k in schema if getattr(k, "schema", None) == CONF_STATION_ID
         )
-        assert station_key.default() == 282
+        # Default is stored as a string so it matches SelectSelector options.
+        assert station_key.default() == "282"
 
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],

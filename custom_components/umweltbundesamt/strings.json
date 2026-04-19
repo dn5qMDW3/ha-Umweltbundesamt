@@ -13,7 +13,8 @@
     "abort": {
       "already_configured": "This station is already configured.",
       "cannot_connect": "Could not reach the Umweltbundesamt API. Try again later.",
-      "no_active_stations": "The Umweltbundesamt API returned no active stations."
+      "no_active_stations": "The Umweltbundesamt API returned no active stations.",
+      "unknown": "Unexpected error setting up the integration. Check the Home Assistant log for details."
     }
   },
   "options": {
@@ -29,7 +30,8 @@
     },
     "abort": {
       "cannot_connect": "Could not reach the Umweltbundesamt API. Try again later.",
-      "no_active_stations": "The Umweltbundesamt API returned no active stations."
+      "no_active_stations": "The Umweltbundesamt API returned no active stations.",
+      "unknown": "Unexpected error. Check the Home Assistant log for details."
     }
   },
   "entity": {

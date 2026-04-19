@@ -13,7 +13,8 @@
     "abort": {
       "already_configured": "Diese Station ist bereits konfiguriert.",
       "cannot_connect": "Die Umweltbundesamt-API ist nicht erreichbar. Bitte später erneut versuchen.",
-      "no_active_stations": "Die Umweltbundesamt-API hat keine aktiven Stationen zurückgegeben."
+      "no_active_stations": "Die Umweltbundesamt-API hat keine aktiven Stationen zurückgegeben.",
+      "unknown": "Unerwarteter Fehler bei der Einrichtung. Details im Home-Assistant-Log."
     }
   },
   "options": {
@@ -29,7 +30,8 @@
     },
     "abort": {
       "cannot_connect": "Die Umweltbundesamt-API ist nicht erreichbar. Bitte später erneut versuchen.",
-      "no_active_stations": "Die Umweltbundesamt-API hat keine aktiven Stationen zurückgegeben."
+      "no_active_stations": "Die Umweltbundesamt-API hat keine aktiven Stationen zurückgegeben.",
+      "unknown": "Unerwarteter Fehler. Details im Home-Assistant-Log."
     }
   },
   "entity": {

@@ -9,6 +9,7 @@ from zoneinfo import ZoneInfo
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
+from homeassistant.data_entry_flow import AbortFlow
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
     SelectOptionDict,
@@ -39,44 +40,51 @@ class UBAConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        session = async_get_clientsession(self.hass)
-        client = UBAClient(session)
         try:
-            stations = await client.fetch_stations()
-        except UBAError as err:
-            _LOGGER.warning("UBA station fetch failed: %s", err)
-            return self.async_abort(reason="cannot_connect")
+            session = async_get_clientsession(self.hass)
+            client = UBAClient(session)
+            try:
+                stations = await client.fetch_stations()
+            except UBAError as err:
+                _LOGGER.warning("UBA station fetch failed: %s", err)
+                return self.async_abort(reason="cannot_connect")
 
-        active = [s for s in stations if s.is_active(datetime.now(BERLIN_TZ))]
-        if not active:
-            return self.async_abort(reason="no_active_stations")
+            now = datetime.now(BERLIN_TZ)
+            active = [s for s in stations if s.is_active(now)]
+            if not active:
+                return self.async_abort(reason="no_active_stations")
 
-        home_lat = self.hass.config.latitude
-        home_lon = self.hass.config.longitude
-        active.sort(key=lambda s: s.distance_km(home_lat, home_lon))
-        nearest = active[0]
+            home_lat = self.hass.config.latitude
+            home_lon = self.hass.config.longitude
+            active.sort(key=lambda s: s.distance_km(home_lat, home_lon))
+            nearest = active[0]
 
-        if user_input is not None:
-            await self.async_set_unique_id(str(user_input[CONF_STATION_ID]))
-            self._abort_if_unique_id_configured()
-            picked = next(
-                (s for s in active if s.id == user_input[CONF_STATION_ID]),
-                nearest,
+            if user_input is not None:
+                picked_id = int(user_input[CONF_STATION_ID])
+                await self.async_set_unique_id(str(picked_id))
+                self._abort_if_unique_id_configured()
+                picked = next(
+                    (s for s in active if s.id == picked_id), nearest,
+                )
+                return self.async_create_entry(
+                    title=f"{picked.name} ({picked.city})",
+                    data={CONF_STATION_ID: picked.id},
+                    options={CONF_INCLUDE_AQI: bool(user_input.get(
+                        CONF_INCLUDE_AQI, DEFAULT_INCLUDE_AQI
+                    ))},
+                )
+
+            return self.async_show_form(
+                step_id="user",
+                data_schema=_build_station_schema(
+                    active, home_lat, home_lon, default_id=nearest.id
+                ),
             )
-            return self.async_create_entry(
-                title=f"{picked.name} ({picked.city})",
-                data={CONF_STATION_ID: picked.id},
-                options={CONF_INCLUDE_AQI: user_input.get(
-                    CONF_INCLUDE_AQI, DEFAULT_INCLUDE_AQI
-                )},
-            )
-
-        return self.async_show_form(
-            step_id="user",
-            data_schema=_build_station_schema(
-                active, home_lat, home_lon, default_id=nearest.id
-            ),
-        )
+        except AbortFlow:
+            raise
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Unexpected error in Umweltbundesamt config flow")
+            return self.async_abort(reason="unknown")
 
     @staticmethod
     @callback
@@ -94,6 +102,17 @@ class UBAOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
+    ) -> config_entries.ConfigFlowResult:
+        try:
+            return await self._async_step_init_inner(user_input)
+        except AbortFlow:
+            raise
+        except Exception:  # noqa: BLE001
+            _LOGGER.exception("Unexpected error in Umweltbundesamt options flow")
+            return self.async_abort(reason="unknown")
+
+    async def _async_step_init_inner(
+        self, user_input: dict[str, Any] | None,
     ) -> config_entries.ConfigFlowResult:
         session = async_get_clientsession(self.hass)
         client = UBAClient(session)
@@ -162,7 +181,7 @@ def _build_station_schema(
     return vol.Schema(
         {
             vol.Required(
-                CONF_STATION_ID, default=default_id
+                CONF_STATION_ID, default=str(default_id)
             ): vol.All(
                 vol.Coerce(str),
                 SelectSelector(
