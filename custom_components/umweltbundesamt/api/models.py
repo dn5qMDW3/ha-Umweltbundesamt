@@ -20,7 +20,13 @@ class Component:
 
 @dataclass(frozen=True)
 class Station:
-    """An Umweltbundesamt measurement station."""
+    """An Umweltbundesamt measurement station.
+
+    Invariant: ``active_from`` and ``active_to`` are timezone-aware
+    (Europe/Berlin) because ``UBAClient`` constructs them via
+    ``_parse_uba_datetime``. Callers MUST pass timezone-aware values to
+    ``is_active``; mixing aware and naive datetimes raises ``TypeError``.
+    """
 
     id: int
     code: str
@@ -34,7 +40,10 @@ class Station:
     active_to: Optional[datetime]
 
     def is_active(self, at: datetime) -> bool:
-        """Return True if the station is measuring at the given moment."""
+        """Return True if the station is measuring at the given moment.
+
+        ``active_from`` is inclusive, ``active_to`` is exclusive.
+        """
         if at < self.active_from:
             return False
         if self.active_to is not None and at >= self.active_to:

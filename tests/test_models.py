@@ -65,3 +65,21 @@ def test_measurement_get_component_missing_returns_none():
         components={},
     )
     assert m.get_component_value("PM10") is None
+
+
+def test_station_is_active_with_tz_aware_datetimes():
+    """Pin the timezone contract: production always uses tz-aware datetimes."""
+    berlin = ZoneInfo("Europe/Berlin")
+    active_from = datetime(2000, 1, 1, tzinfo=berlin)
+    active_to = datetime(2020, 1, 1, tzinfo=berlin)
+    station = Station(
+        id=1, code="X", name="Old", city="Nowhere",
+        latitude=0.0, longitude=0.0, station_type="", network_code="",
+        active_from=active_from, active_to=active_to,
+    )
+    # active_from is inclusive
+    assert station.is_active(active_from) is True
+    # active_to is exclusive
+    assert station.is_active(active_to) is False
+    # Before start is inactive
+    assert station.is_active(datetime(1999, 12, 31, tzinfo=berlin)) is False
