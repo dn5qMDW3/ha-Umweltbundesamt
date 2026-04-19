@@ -8,7 +8,7 @@ Air-quality sensors from the German Federal Environment Agency's open-data API, 
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square)](https://hacs.xyz/)
 [![Release](https://img.shields.io/github/v/release/borisgrushenko/ha-Umweltbundesamt?style=flat-square)](https://github.com/borisgrushenko/ha-Umweltbundesamt/releases)
-[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2025.1%2B-03A9F4.svg?style=flat-square&logo=home-assistant&logoColor=white)](https://www.home-assistant.io/)
+[![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.1%2B-03A9F4.svg?style=flat-square&logo=home-assistant&logoColor=white)](https://www.home-assistant.io/)
 [![Quality Scale](https://img.shields.io/badge/quality%20scale-bronze-CD7F32.svg?style=flat-square)](https://developers.home-assistant.io/docs/integration_quality_scale/)
 [![Hassfest](https://img.shields.io/github/actions/workflow/status/borisgrushenko/ha-Umweltbundesamt/hassfest.yaml?style=flat-square&label=hassfest)](https://github.com/borisgrushenko/ha-Umweltbundesamt/actions/workflows/hassfest.yaml)
 [![HACS Validation](https://img.shields.io/github/actions/workflow/status/borisgrushenko/ha-Umweltbundesamt/hacs.yaml?style=flat-square&label=HACS%20validation)](https://github.com/borisgrushenko/ha-Umweltbundesamt/actions/workflows/hacs.yaml)

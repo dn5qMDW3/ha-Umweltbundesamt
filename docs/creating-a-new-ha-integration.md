@@ -27,7 +27,7 @@ Write these four answers in a spec file before you write code. Keep it to one pa
 │   └── release.yaml                 # auto-release on manifest version bump (see §9)
 ├── .gitignore                       # at minimum .venv/, __pycache__/, .pytest_cache/
 ├── README.md                        # HACS renders this on the integration card
-├── hacs.json                        # HACS manifest: {"name": "...", "homeassistant": "2025.1.0"}
+├── hacs.json                        # HACS manifest: {"name": "...", "homeassistant": "2026.1.0"}
 ├── pyproject.toml                   # [tool.pytest.ini_options] asyncio_mode = "auto"
 ├── custom_components/<domain>/
 │   ├── __init__.py                  # async_setup_entry / async_unload_entry
@@ -99,11 +99,11 @@ Keep it minimal — the HACS docs are very short for a reason.
 ```json
 {
   "name": "Display Name",
-  "homeassistant": "2025.1.0"
+  "homeassistant": "2026.1.0"
 }
 ```
 
-- **`homeassistant`** — minimum HA version you're promising to support. Bump this any time you use an API introduced in a newer release (e.g. `ConfigEntry.runtime_data` in 2024.11+). Too low = users on old HA install and get `ImportError`s at entry setup.
+- **`homeassistant`** — minimum HA version you're promising to support. For any new integration written today, start at `2026.1.0` (the first 2026 release) — earlier versions predate several APIs this guide takes for granted (`ConfigEntry.runtime_data`, the built-in `OptionsFlow.config_entry` property, current selector validation, newer `ConfigEntry` constructor kwargs like `subentries_data`). Too low = users on old HA install and hit `ImportError` / `TypeError` at entry setup.
 - Don't add `content_in_root: false` — it's the default.
 - Don't add `render_readme: true` — it's deprecated.
 - `zip_release` / `filename` are only for repos that ship a pre-built zip instead of the source tree.
@@ -152,7 +152,7 @@ Things to get right:
 
 - **`unique_id`** — call `async_set_unique_id(str(...))` + `_abort_if_unique_id_configured()` before `async_create_entry`. Without this, users can add the same device twice.
 - **Errors vs. aborts** — `async_show_form(errors={...})` keeps the form open (user can retry); `async_abort(reason=...)` ends the flow. Put transient network failures in `abort` with a `cannot_connect` reason rather than blocking the form.
-- **Selectors** — `SelectSelector(SelectSelectorConfig(options=[SelectOptionDict(value=str(...), label="..."), ...], mode=DROPDOWN, custom_value=False))`. The `value` fields **must be strings**. If you need an int at storage time, wrap the schema: `vol.All(vol.Coerce(str), SelectSelector(...), lambda v: int(v))`, and pass `default=str(int_default)` — a mismatched default type is a common source of "Config flow could not be loaded: 500" errors.
+- **Selectors** — `SelectSelector(SelectSelectorConfig(options=[SelectOptionDict(value=str(...), label="..."), ...], mode=DROPDOWN, custom_value=False))`. The `value` fields **must be strings** and `default=` must match (pass `default=str(int_default)` if your storage value is an int). Do the int conversion in the step handler after `user_input` arrives — **do not** wrap the selector in `vol.All(..., some_callable)` to coerce: HA serializes the schema to JSON for the frontend via `voluptuous_serialize.convert`, which cannot walk plain Python callables and raises `ValueError: Unable to convert schema`, which the frontend surfaces as a 500 "Config flow could not be loaded". If you need custom coercion in-schema, use built-in voluptuous validators (`vol.Coerce`, `vol.In`, `vol.Range`) — they have serializers.
 - **Translations** — `async_show_form` does not need an `errors=` for abort reasons, but every `errors`/`abort` reason you use **must** exist under `config.error.<key>` or `config.abort.<key>` in `strings.json`.
 - **No `__init__(self, entry)` on `OptionsFlow`** — this pattern is deprecated since HA 2024.11 and errors from 2025.12 onward. Use the built-in `self.config_entry` property.
 - **Don't swallow `AbortFlow`** — if you wrap the step body in a broad `try/except`, re-raise `AbortFlow` explicitly (it's the internal signal used by `_abort_if_unique_id_configured`). Better: don't wrap at all; HA already maps unhandled exceptions to an `unknown` abort.
@@ -392,6 +392,7 @@ Common gotchas:
 - `ConfigEntry(...)` gains required kwargs each HA release (`discovery_keys={}`, `subentries_data={}` etc.). Update test helpers when the HA version moves.
 - `MagicMock(name=...)` doesn't set `.name` — `name` is reserved on `Mock`. Build the mock, then `m.name = "..."`.
 - HA canonicalizes `µ` (U+00B5) to `μ` (U+03BC) in units. Don't assert on the exact codepoint.
+- **Write a "schema is JSON-serializable" test for every flow step.** HA's REST view runs `voluptuous_serialize.convert(result["data_schema"], custom_serializer=cv.custom_serializer)` before handing the form to the frontend. Call the same function in a test so you catch non-serializable validators (bare functions inside `vol.All`, custom classes without a serializer) locally instead of via a production 500.
 
 ---
 
