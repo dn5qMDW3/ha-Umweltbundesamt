@@ -1,0 +1,53 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Umweltbundesamt",
+        "description": "Pick the UBA station to monitor. The closest active station to your Home Assistant home location is pre-selected.",
+        "data": {
+          "station_id": "Measurement station",
+          "include_aqi": "Include air-quality index sensor"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This station is already configured.",
+      "cannot_connect": "Could not reach the Umweltbundesamt API. Try again later.",
+      "no_active_stations": "The Umweltbundesamt API returned no active stations."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Umweltbundesamt options",
+        "description": "Change the monitored station or toggle the air-quality index sensor.",
+        "data": {
+          "station_id": "Measurement station",
+          "include_aqi": "Include air-quality index sensor"
+        }
+      }
+    },
+    "abort": {
+      "cannot_connect": "Could not reach the Umweltbundesamt API. Try again later.",
+      "no_active_stations": "The Umweltbundesamt API returned no active stations."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "air_quality_index": {
+        "name": "Air quality index",
+        "state_attributes": {
+          "level_text": {
+            "state": {
+              "very_good": "Very good",
+              "good": "Good",
+              "moderate": "Moderate",
+              "poor": "Poor",
+              "very_poor": "Very poor"
+            }
+          }
+        }
+      }
+    }
+  }
+}

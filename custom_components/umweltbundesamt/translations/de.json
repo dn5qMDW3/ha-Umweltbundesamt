@@ -1,0 +1,53 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Umweltbundesamt",
+        "description": "Wählen Sie die UBA-Messstation. Die nächstgelegene aktive Station zu Ihrem Home-Assistant-Standort ist vorausgewählt.",
+        "data": {
+          "station_id": "Messstation",
+          "include_aqi": "Luftqualitätsindex-Sensor hinzufügen"
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "Diese Station ist bereits konfiguriert.",
+      "cannot_connect": "Die Umweltbundesamt-API ist nicht erreichbar. Bitte später erneut versuchen.",
+      "no_active_stations": "Die Umweltbundesamt-API hat keine aktiven Stationen zurückgegeben."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Umweltbundesamt-Optionen",
+        "description": "Messstation ändern oder Luftqualitätsindex-Sensor umschalten.",
+        "data": {
+          "station_id": "Messstation",
+          "include_aqi": "Luftqualitätsindex-Sensor hinzufügen"
+        }
+      }
+    },
+    "abort": {
+      "cannot_connect": "Die Umweltbundesamt-API ist nicht erreichbar. Bitte später erneut versuchen.",
+      "no_active_stations": "Die Umweltbundesamt-API hat keine aktiven Stationen zurückgegeben."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "air_quality_index": {
+        "name": "Luftqualitätsindex",
+        "state_attributes": {
+          "level_text": {
+            "state": {
+              "very_good": "Sehr gut",
+              "good": "Gut",
+              "moderate": "Mäßig",
+              "poor": "Schlecht",
+              "very_poor": "Sehr schlecht"
+            }
+          }
+        }
+      }
+    }
+  }
+}
