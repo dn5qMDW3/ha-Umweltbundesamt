@@ -160,28 +160,24 @@ def _build_station_schema(
             )
         )
 
+    # The selector returns a string (SelectSelectorConfig values are strings);
+    # int conversion happens in the flow handlers after user_input arrives.
+    # We cannot use vol.All(..., _coerce_station_id) here: HA serializes the
+    # schema to JSON for the frontend via voluptuous_serialize, which cannot
+    # walk plain Python callables.
     return vol.Schema(
         {
             vol.Required(
                 CONF_STATION_ID, default=str(default_id)
-            ): vol.All(
-                vol.Coerce(str),
-                SelectSelector(
-                    SelectSelectorConfig(
-                        options=options,
-                        mode=SelectSelectorMode.DROPDOWN,
-                        custom_value=False,
-                    )
-                ),
-                _coerce_station_id,
+            ): SelectSelector(
+                SelectSelectorConfig(
+                    options=options,
+                    mode=SelectSelectorMode.DROPDOWN,
+                    custom_value=False,
+                )
             ),
             vol.Required(
                 CONF_INCLUDE_AQI, default=default_include_aqi
             ): bool,
         }
     )
-
-
-def _coerce_station_id(value: Any) -> int:
-    """Selectors return strings; config entries need ints."""
-    return int(value)

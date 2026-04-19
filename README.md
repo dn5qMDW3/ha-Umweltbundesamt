@@ -21,21 +21,6 @@ Air-quality sensors from the German Federal Environment Agency's open-data API, 
 
 The **Umweltbundesamt** (UBA) is Germany's Federal Environment Agency. It publishes hourly air-quality measurements from ~2 300 monitoring stations across Germany via a free, unauthenticated open-data API. This integration turns those measurements into first-class Home Assistant sensors — one device per station, one sensor per pollutant, plus an overall 1–5 air-quality index.
 
-```mermaid
-flowchart LR
-    A[UBA Open Data API]:::api --> B[UBAClient<br/>aiohttp]:::client
-    B --> C[DataUpdateCoordinator<br/>hourly poll]:::coord
-    C --> D[SensorEntity<br/>per pollutant]:::entity
-    C --> E[SensorEntity<br/>air-quality index]:::entity
-    D --> F[Home Assistant]:::ha
-    E --> F
-    classDef api fill:#E8F5E9,stroke:#2E7D32,color:#1B5E20;
-    classDef client fill:#E3F2FD,stroke:#1565C0,color:#0D47A1;
-    classDef coord fill:#E3F2FD,stroke:#1565C0,color:#0D47A1;
-    classDef entity fill:#E3F2FD,stroke:#1565C0,color:#0D47A1;
-    classDef ha fill:#FFF3E0,stroke:#E65100,color:#BF360C;
-```
-
 ## Features
 
 | | |

@@ -79,7 +79,7 @@ async def test_user_flow_preselects_nearest_and_creates_entry(
 
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
-            user_input={CONF_STATION_ID: 1083, CONF_INCLUDE_AQI: True},
+            user_input={CONF_STATION_ID: "1083", CONF_INCLUDE_AQI: True},
         )
     assert result["type"] == data_entry_flow.FlowResultType.CREATE_ENTRY
     assert result["data"][CONF_STATION_ID] == 1083
@@ -143,7 +143,34 @@ async def test_user_flow_rejects_duplicate_station(hass: HomeAssistant):
         )
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
-            user_input={CONF_STATION_ID: 282, CONF_INCLUDE_AQI: True},
+            user_input={CONF_STATION_ID: "282", CONF_INCLUDE_AQI: True},
         )
     assert result["type"] == data_entry_flow.FlowResultType.ABORT
     assert result["reason"] == "already_configured"
+
+
+@pytest.mark.asyncio
+async def test_user_flow_schema_is_json_serializable(hass: HomeAssistant):
+    """Regression test: HA serializes the schema for the frontend via
+    voluptuous_serialize.convert(). A bare callable inside vol.All() makes
+    that conversion raise "Unable to convert schema" and surfaces as a
+    500 "Config flow could not be loaded" in the UI.
+    """
+    import voluptuous_serialize
+    from homeassistant.helpers import config_validation as cv
+
+    with patch(
+        "custom_components.umweltbundesamt.config_flow.UBAClient"
+    ) as client_cls:
+        client_cls.return_value.fetch_stations = AsyncMock(
+            return_value=_sample_stations()
+        )
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+    assert result["type"] == data_entry_flow.FlowResultType.FORM
+    # This is exactly what HA's config-entries REST view does before returning
+    # the schema to the frontend.
+    voluptuous_serialize.convert(
+        result["data_schema"], custom_serializer=cv.custom_serializer,
+    )
