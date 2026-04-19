@@ -27,6 +27,7 @@ class UBAClient:
         self._session = session
         self._components: dict[int, Component] | None = None
         self._stations: list[Station] | None = None
+        self._airquality_limits: dict[int, datetime | None] | None = None
 
     async def _get_json(self, path: str, params: dict[str, Any]) -> Any:
         url = f"{BASE_URL}{path}"
@@ -120,6 +121,43 @@ class UBAClient:
                 raise UBAApiError(f"stations: parse error: {err}") from err
             parsed.append(station)
         self._stations = parsed
+        return parsed
+
+    async def fetch_airquality_limits(self) -> dict[int, datetime | None]:
+        """Fetch each station's newest available air-quality timestamp.
+
+        ``/airquality/limits`` returns ``{station_id: [first, last] | null}``.
+        ``null`` means the station has never published air-quality data;
+        otherwise we return the parsed ``last`` as an aware ``datetime``.
+        Used by the config flow to hide stations that are listed as
+        active but silently publish nothing.
+        """
+        if self._airquality_limits is not None:
+            return self._airquality_limits
+        payload = await self._get_json("/airquality/limits", {})
+        if not isinstance(payload, dict):
+            raise UBAApiError("airquality limits: unexpected payload shape")
+        data = payload.get("data")
+        if not isinstance(data, dict):
+            raise UBAApiError(
+                "airquality limits: 'data' key missing or wrong type"
+            )
+        parsed: dict[int, datetime | None] = {}
+        for key, value in data.items():
+            try:
+                station_id = int(key)
+            except (TypeError, ValueError):
+                continue
+            if value is None:
+                parsed[station_id] = None
+                continue
+            if not isinstance(value, list) or len(value) < 2:
+                continue
+            try:
+                parsed[station_id] = _parse_uba_datetime(value[1])
+            except UBAApiError:
+                parsed[station_id] = None
+        self._airquality_limits = parsed
         return parsed
 
     async def fetch_current_airquality(

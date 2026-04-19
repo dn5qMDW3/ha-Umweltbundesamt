@@ -25,6 +25,7 @@ from .const import (
     CONF_STATION_ID,
     DEFAULT_INCLUDE_AQI,
     DOMAIN,
+    STATION_STALENESS_THRESHOLD,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -44,12 +45,16 @@ class UBAConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         client = UBAClient(session)
         try:
             stations = await client.fetch_stations()
+            limits = await client.fetch_airquality_limits()
         except UBAError as err:
             _LOGGER.warning("UBA station fetch failed: %s", err)
             return self.async_abort(reason="cannot_connect")
 
         now = datetime.now(BERLIN_TZ)
-        active = [s for s in stations if s.is_active(now)]
+        active = [
+            s for s in stations
+            if s.is_active(now) and _has_recent_data(limits, s.id, now)
+        ]
         if not active:
             return self.async_abort(reason="no_active_stations")
 
@@ -98,10 +103,15 @@ class UBAOptionsFlow(config_entries.OptionsFlow):
         client = UBAClient(session)
         try:
             stations = await client.fetch_stations()
+            limits = await client.fetch_airquality_limits()
         except UBAError as err:
             _LOGGER.warning("UBA station fetch failed: %s", err)
             return self.async_abort(reason="cannot_connect")
-        active = [s for s in stations if s.is_active(datetime.now(BERLIN_TZ))]
+        now = datetime.now(BERLIN_TZ)
+        active = [
+            s for s in stations
+            if s.is_active(now) and _has_recent_data(limits, s.id, now)
+        ]
         if not active:
             return self.async_abort(reason="no_active_stations")
 
@@ -135,6 +145,23 @@ class UBAOptionsFlow(config_entries.OptionsFlow):
             default_include_aqi=include_aqi,
         )
         return self.async_show_form(step_id="init", data_schema=schema)
+
+
+def _has_recent_data(
+    limits: dict[int, datetime | None],
+    station_id: int,
+    now: datetime,
+) -> bool:
+    """True if the station has published air-quality data recently.
+
+    ``STATION_STALENESS_THRESHOLD`` defines "recently". Stations missing
+    from the limits map or explicitly listed with ``None`` are treated as
+    not publishing.
+    """
+    last = limits.get(station_id)
+    if last is None:
+        return False
+    return (now - last) <= STATION_STALENESS_THRESHOLD
 
 
 def _build_station_schema(

@@ -21,6 +21,12 @@ from custom_components.umweltbundesamt.const import (
 BERLIN = ZoneInfo("Europe/Berlin")
 
 
+def _fresh_limits() -> dict[int, datetime]:
+    """Limits map with all sample stations publishing right now."""
+    now = datetime.now(BERLIN).replace(microsecond=0)
+    return {282: now, 1083: now, 999: now, 1: now}
+
+
 def _sample_stations() -> list[Station]:
     now_active = datetime(2000, 1, 1, tzinfo=BERLIN)
     return [
@@ -62,6 +68,9 @@ async def test_user_flow_preselects_nearest_and_creates_entry(
     ) as client_cls:
         client_cls.return_value.fetch_stations = AsyncMock(
             return_value=_sample_stations()
+        )
+        client_cls.return_value.fetch_airquality_limits = AsyncMock(
+            return_value=_fresh_limits()
         )
 
         result = await hass.config_entries.flow.async_init(
@@ -115,6 +124,9 @@ async def test_user_flow_no_active_stations(hass: HomeAssistant):
         client_cls.return_value.fetch_stations = AsyncMock(
             return_value=[expired]
         )
+        client_cls.return_value.fetch_airquality_limits = AsyncMock(
+            return_value={}
+        )
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": config_entries.SOURCE_USER}
         )
@@ -137,6 +149,9 @@ async def test_user_flow_rejects_duplicate_station(hass: HomeAssistant):
     ) as client_cls:
         client_cls.return_value.fetch_stations = AsyncMock(
             return_value=_sample_stations()
+        )
+        client_cls.return_value.fetch_airquality_limits = AsyncMock(
+            return_value=_fresh_limits()
         )
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": config_entries.SOURCE_USER}
@@ -165,6 +180,9 @@ async def test_user_flow_schema_is_json_serializable(hass: HomeAssistant):
         client_cls.return_value.fetch_stations = AsyncMock(
             return_value=_sample_stations()
         )
+        client_cls.return_value.fetch_airquality_limits = AsyncMock(
+            return_value=_fresh_limits()
+        )
         result = await hass.config_entries.flow.async_init(
             DOMAIN, context={"source": config_entries.SOURCE_USER}
         )
@@ -174,3 +192,39 @@ async def test_user_flow_schema_is_json_serializable(hass: HomeAssistant):
     voluptuous_serialize.convert(
         result["data_schema"], custom_serializer=cv.custom_serializer,
     )
+
+
+@pytest.mark.asyncio
+async def test_user_flow_hides_stations_without_recent_data(
+    hass: HomeAssistant,
+):
+    """Stations with None or stale limits must not appear in the dropdown."""
+    now = datetime.now(BERLIN).replace(microsecond=0)
+    stale_limits = {
+        282: now,                                       # fresh
+        1083: now - __import__("datetime").timedelta(   # 10 days old → stale
+            days=10
+        ),
+        999: None,                                      # never published
+    }
+    with patch(
+        "custom_components.umweltbundesamt.config_flow.UBAClient"
+    ) as client_cls:
+        client_cls.return_value.fetch_stations = AsyncMock(
+            return_value=_sample_stations()
+        )
+        client_cls.return_value.fetch_airquality_limits = AsyncMock(
+            return_value=stale_limits
+        )
+        result = await hass.config_entries.flow.async_init(
+            DOMAIN, context={"source": config_entries.SOURCE_USER}
+        )
+    assert result["type"] == data_entry_flow.FlowResultType.FORM
+
+    schema_dict = result["data_schema"].schema
+    station_key = next(
+        k for k in schema_dict if getattr(k, "schema", None) == CONF_STATION_ID
+    )
+    options = schema_dict[station_key].config["options"]
+    station_ids_in_dropdown = {int(opt["value"]) for opt in options}
+    assert station_ids_in_dropdown == {282}
