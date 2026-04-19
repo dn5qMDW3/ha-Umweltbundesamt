@@ -90,7 +90,9 @@ async def _install_entry(hass: HomeAssistant) -> str:
 @pytest.mark.asyncio
 async def test_sensors_created_for_each_component(hass: HomeAssistant):
     await _install_entry(hass)
-    pm10 = hass.states.get("sensor.wedding_berlin_feinstaub_pm10")
+    # With a device_class, HA assigns the entity_id from the device class name
+    # (e.g. "pm10"), not the German component label.
+    pm10 = hass.states.get("sensor.wedding_berlin_pm10")
     assert pm10 is not None
     assert float(pm10.state) == pytest.approx(18.5)
     # HA normalizes U+00B5 (MICRO SIGN) to U+03BC (GREEK SMALL LETTER MU).
@@ -98,15 +100,31 @@ async def test_sensors_created_for_each_component(hass: HomeAssistant):
     assert pm10.attributes["device_class"] == SensorDeviceClass.PM10
     assert pm10.attributes["state_class"] == SensorStateClass.MEASUREMENT
 
+    no2 = hass.states.get("sensor.wedding_berlin_nitrogen_dioxide")
+    assert no2 is not None
+    assert no2.attributes["device_class"] == SensorDeviceClass.NITROGEN_DIOXIDE
+
 
 @pytest.mark.asyncio
 async def test_aqi_sensor_has_level_text_attribute(hass: HomeAssistant):
     await _install_entry(hass)
-    aqi = hass.states.get("sensor.wedding_berlin_air_quality_index")
-    assert aqi is not None
+    # The AQI entity is identified by its unique_id suffix; HA constructs the
+    # entity_id from the device name alone (translation-key name only
+    # resolves once the integration's translations are loaded by HA core).
+    aqi = None
+    for state in hass.states.async_all("sensor"):
+        if state.entity_id.startswith("sensor.wedding_berlin") and (
+            "pm10" not in state.entity_id
+            and "nitrogen_dioxide" not in state.entity_id
+        ):
+            aqi = state
+            break
+    assert aqi is not None, "AQI sensor not found"
     assert int(aqi.state) == 2
-    assert aqi.attributes["level_text"] in ("good", "Gut", "Good")
+    assert aqi.attributes["level_text"] == "good"
     assert "measurement_time" in aqi.attributes
+    assert aqi.attributes["station_code"] == "DEBE010"
+    assert aqi.attributes["station_city"] == "Berlin"
 
 
 @pytest.mark.asyncio
@@ -136,4 +154,11 @@ async def test_aqi_sensor_disabled_when_option_off(hass: HomeAssistant):
         assert await hass.config_entries.async_setup(entry.entry_id)
         await hass.async_block_till_done()
 
-    assert hass.states.get("sensor.wedding_berlin_air_quality_index") is None
+    # Only the PM10 per-component sensor should exist; no AQI sensor should
+    # have been registered at all.
+    sensor_entity_ids = {
+        state.entity_id
+        for state in hass.states.async_all("sensor")
+        if state.entity_id.startswith("sensor.wedding_berlin")
+    }
+    assert sensor_entity_ids == {"sensor.wedding_berlin_pm10"}

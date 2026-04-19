@@ -8,7 +8,7 @@ Home Assistant integration for the German Federal Environment Agency (Umweltbund
 - One sensor per pollutant the station reports (PM10, PM2.5, NO2, O3, SO2, CO, …).
 - A 1–5 air-quality-index sensor with localized level labels.
 - Hourly polling of the public UBA API (no authentication required).
-- Long-term statistics via HA's `measurement` state class.
+- Long-term statistics for per-pollutant sensors via HA's `measurement` state class.
 
 ## Installation (HACS)
 

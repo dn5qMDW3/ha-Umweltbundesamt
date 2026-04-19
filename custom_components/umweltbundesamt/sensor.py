@@ -58,9 +58,19 @@ async def async_setup_entry(
         component = code_to_component.get(code)
         if component is None:
             continue
+        device_class = _COMPONENT_DEVICE_CLASSES.get(code)
+        # When we have a matching HA device class, let HA localize the name;
+        # fall back to the API's German label only for unknown components.
+        friendly_name = None if device_class is not None else component.name
         entities.append(
-            UBAComponentSensor(coordinator, station, code, component.name,
-                               reading.unit)
+            UBAComponentSensor(
+                coordinator,
+                station,
+                code,
+                friendly_name,
+                reading.unit,
+                device_class,
+            )
         )
     if include_aqi:
         entities.append(UBAAirQualityIndexSensor(coordinator, station))
@@ -102,16 +112,18 @@ class UBAComponentSensor(
         coordinator: UBADataUpdateCoordinator,
         station: Station,
         code: str,
-        friendly_name: str,
+        friendly_name: str | None,
         unit: str,
+        device_class: SensorDeviceClass | None,
     ) -> None:
         super().__init__(coordinator)
         self._code = code
-        self._attr_name = friendly_name
+        if friendly_name is not None:
+            self._attr_name = friendly_name
         self._attr_native_unit_of_measurement = unit
         self._attr_unique_id = f"uba_{station.id}_{code.lower()}"
         self._attr_device_info = _device_info(station)
-        self._attr_device_class = _COMPONENT_DEVICE_CLASSES.get(code)
+        self._attr_device_class = device_class
 
     @property
     def native_value(self) -> float | None:
@@ -139,7 +151,6 @@ class UBAAirQualityIndexSensor(
     ) -> None:
         super().__init__(coordinator)
         self._station = station
-        self._attr_name = "Air quality index"
         self._attr_unique_id = f"uba_{station.id}_aqi"
         self._attr_device_info = _device_info(station)
 
