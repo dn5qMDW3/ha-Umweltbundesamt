@@ -1,0 +1,5 @@
+{
+  "1": [1, "PM10", "PM\u2081\u2080", "\u00b5g/m\u00b3", "Feinstaub (PM\u2081\u2080)"],
+  "5": [5, "NO2", "NO\u2082", "\u00b5g/m\u00b3", "Stickstoffdioxid"],
+  "3": [3, "O3", "O\u2083", "\u00b5g/m\u00b3", "Ozon"]
+}
