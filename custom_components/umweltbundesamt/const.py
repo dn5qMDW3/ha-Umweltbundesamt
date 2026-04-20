@@ -6,6 +6,10 @@ from datetime import timedelta
 DOMAIN = "umweltbundesamt"
 BASE_URL = "https://www.umweltbundesamt.de/api/air_data/v2"
 DEFAULT_SCAN_INTERVAL = timedelta(minutes=60)
+# Used after a failed poll: the coordinator temporarily switches to this
+# shorter cadence so transient network / API blips recover quickly, and
+# restores DEFAULT_SCAN_INTERVAL on the next successful refresh.
+FAILURE_RETRY_INTERVAL = timedelta(minutes=5)
 
 CONF_STATION_ID = "station_id"
 CONF_INCLUDE_AQI = "include_aqi"

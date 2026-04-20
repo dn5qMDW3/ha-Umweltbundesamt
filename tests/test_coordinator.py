@@ -13,6 +13,10 @@ from custom_components.umweltbundesamt.api.models import (
     ComponentReading,
     Measurement,
 )
+from custom_components.umweltbundesamt.const import (
+    DEFAULT_SCAN_INTERVAL,
+    FAILURE_RETRY_INTERVAL,
+)
 from custom_components.umweltbundesamt.coordinator import (
     UBADataUpdateCoordinator,
 )
@@ -57,3 +61,31 @@ async def test_coordinator_raises_update_failed_when_no_rows(hass):
     coord = UBADataUpdateCoordinator(hass, client, station_id=282)
     with pytest.raises(UpdateFailed):
         await coord._async_update_data()
+
+
+@pytest.mark.asyncio
+async def test_coordinator_shortens_interval_on_failure(hass):
+    """A failed poll drops the interval to FAILURE_RETRY_INTERVAL so the
+    next attempt arrives quickly; a subsequent success restores
+    DEFAULT_SCAN_INTERVAL."""
+    client = AsyncMock()
+    coord = UBADataUpdateCoordinator(hass, client, station_id=282)
+    assert coord.update_interval == DEFAULT_SCAN_INTERVAL
+
+    # Network / API error -> short retry interval.
+    client.fetch_current_airquality.side_effect = UBAApiError("boom")
+    with pytest.raises(UpdateFailed):
+        await coord._async_update_data()
+    assert coord.update_interval == FAILURE_RETRY_INTERVAL
+
+    # "No rows" is also a failure from HA's POV -> keep retry interval.
+    client.fetch_current_airquality.side_effect = None
+    client.fetch_current_airquality.return_value = None
+    with pytest.raises(UpdateFailed):
+        await coord._async_update_data()
+    assert coord.update_interval == FAILURE_RETRY_INTERVAL
+
+    # Success -> back to the normal cadence.
+    client.fetch_current_airquality.return_value = _make_measurement()
+    await coord._async_update_data()
+    assert coord.update_interval == DEFAULT_SCAN_INTERVAL
