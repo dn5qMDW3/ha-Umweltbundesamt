@@ -7,11 +7,11 @@
 Air-quality sensors from the German Federal Environment Agency's open-data API, straight in your Home Assistant dashboard.
 
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=flat-square)](https://hacs.xyz/)
-[![Release](https://img.shields.io/github/v/release/borisgrushenko/ha-Umweltbundesamt?style=flat-square)](https://github.com/borisgrushenko/ha-Umweltbundesamt/releases)
+[![Release](https://img.shields.io/github/v/release/dn5qMDW3/ha-Umweltbundesamt?style=flat-square)](https://github.com/dn5qMDW3/ha-Umweltbundesamt/releases)
 [![Home Assistant](https://img.shields.io/badge/Home%20Assistant-2026.1%2B-03A9F4.svg?style=flat-square&logo=home-assistant&logoColor=white)](https://www.home-assistant.io/)
 [![Quality Scale](https://img.shields.io/badge/quality%20scale-bronze-CD7F32.svg?style=flat-square)](https://developers.home-assistant.io/docs/integration_quality_scale/)
-[![Hassfest](https://img.shields.io/github/actions/workflow/status/borisgrushenko/ha-Umweltbundesamt/hassfest.yaml?style=flat-square&label=hassfest)](https://github.com/borisgrushenko/ha-Umweltbundesamt/actions/workflows/hassfest.yaml)
-[![HACS Validation](https://img.shields.io/github/actions/workflow/status/borisgrushenko/ha-Umweltbundesamt/hacs.yaml?style=flat-square&label=HACS%20validation)](https://github.com/borisgrushenko/ha-Umweltbundesamt/actions/workflows/hacs.yaml)
+[![Hassfest](https://img.shields.io/github/actions/workflow/status/dn5qMDW3/ha-Umweltbundesamt/hassfest.yaml?style=flat-square&label=hassfest)](https://github.com/dn5qMDW3/ha-Umweltbundesamt/actions/workflows/hassfest.yaml)
+[![HACS Validation](https://img.shields.io/github/actions/workflow/status/dn5qMDW3/ha-Umweltbundesamt/hacs.yaml?style=flat-square&label=HACS%20validation)](https://github.com/dn5qMDW3/ha-Umweltbundesamt/actions/workflows/hacs.yaml)
 
 </div>
 
@@ -41,7 +41,7 @@ The **Umweltbundesamt** (UBA) is Germany's Federal Environment Agency. It publis
 ### Via HACS
 
 1. In Home Assistant, open **HACS → ⋮ (top right) → Custom repositories**.
-2. Paste `https://github.com/borisgrushenko/ha-Umweltbundesamt` and pick **Integration** as the category.
+2. Paste `https://github.com/dn5qMDW3/ha-Umweltbundesamt` and pick **Integration** as the category.
 3. Open the newly-listed **Umweltbundesamt** entry and click **Download**.
 4. Restart Home Assistant.
 5. **Settings → Devices & Services → Add Integration → Umweltbundesamt**.
@@ -51,7 +51,7 @@ The **Umweltbundesamt** (UBA) is Germany's Federal Environment Agency. It publis
 <details>
 <summary>Expand manual installation steps</summary>
 
-1. Download the latest `umweltbundesamt.zip` from the [releases page](https://github.com/borisgrushenko/ha-Umweltbundesamt/releases).
+1. Download the latest `umweltbundesamt.zip` from the [releases page](https://github.com/dn5qMDW3/ha-Umweltbundesamt/releases).
 2. Unzip into `<config>/custom_components/umweltbundesamt/` so that `manifest.json` sits directly inside that directory.
 3. Restart Home Assistant.
 4. **Settings → Devices & Services → Add Integration → Umweltbundesamt**.
